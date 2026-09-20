@@ -29,6 +29,7 @@ export default function Topbar({ onMenuClick }) {
     proxyUrl, 
     backendUrl, 
     trafficLogs, 
+    trafficStats = {},
     scenarios, 
     setActiveTab, 
     loadScenario,
@@ -419,7 +420,7 @@ export default function Topbar({ onMenuClick }) {
             </span>
             <span className="flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-success-400" />
-              {trafficStats.avgResponseTime || 0}ms
+              {trafficStats?.avgResponseTime || 0}ms
             </span>
             <span className="flex items-center gap-1">
               <HardDrive className="w-3.5 h-3.5 text-accent-400" />
