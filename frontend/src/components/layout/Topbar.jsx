@@ -6,7 +6,7 @@ import {
   Plus, Settings, Command, Activity,
   Clock, HardDrive, Terminal, RefreshCw,
   X, Check, HelpCircle, LogOut, FolderOpen,
-  Sun, Droplet
+  Sun, Droplet, Moon, MousePointer, CheckCircle2
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import AIAssistant from '../modals/AIAssistant';
@@ -20,13 +20,15 @@ export default function Topbar({ onMenuClick }) {
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showThemeMenu, setShowThemeMenu] = useState(false);
 
   const navigate = useNavigate();
   const { 
     isProxyActive, 
     setIsProxyActive,
+    proxyUrl, 
+    backendUrl, 
     trafficLogs, 
-    trafficStats, 
     scenarios, 
     setActiveTab, 
     loadScenario,
@@ -34,7 +36,9 @@ export default function Topbar({ onMenuClick }) {
     setErrorCode,
     reset,
     themeMode,
-    toggleThemeMode
+    setThemeMode,
+    cursorMode,
+    setCursorMode
   } = useStore();
 
   // Search filter lists
@@ -433,25 +437,122 @@ export default function Topbar({ onMenuClick }) {
             <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
           </button>
 
-          {/* Theme Switcher Button */}
-          <button 
-            onClick={() => {
-              toggleThemeMode();
-              toast.success(themeMode === 'dark' ? 'Glassmorphism Theme Enabled!' : 'Dark Theme Restored');
-            }}
-            className={`p-2 rounded-xl border transition hover:scale-105 duration-300 relative ${
-              themeMode === 'glass'
-                ? 'bg-primary-500/25 border-primary-500/50 text-primary-400 shadow-[0_0_15px_rgba(99,102,241,0.25)]'
-                : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
-            }`}
-            title={themeMode === 'glass' ? "Switch to Dark Theme" : "Switch to Glassmorphism Theme"}
-          >
-            {themeMode === 'glass' ? (
-              <Sun className="w-4 h-4 text-amber-400 animate-pulse" />
-            ) : (
-              <Droplet className="w-4 h-4 text-slate-400" />
+          {/* Professional Theme & Cursor Menu */}
+          <div className="relative">
+            <button 
+              onClick={() => {
+                setShowThemeMenu(!showThemeMenu);
+                setShowQuickActions(false);
+                setShowProfileMenu(false);
+                setShowShortcuts(false);
+              }}
+              className={`p-2 rounded-xl border transition-all duration-300 hover:scale-105 flex items-center gap-1.5 ${
+                themeMode === 'obsidian'
+                  ? 'bg-black border-cyan-500/40 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
+                  : themeMode === 'glass'
+                  ? 'bg-primary-500/25 border-primary-500/50 text-primary-400 shadow-[0_0_15px_rgba(99,102,241,0.25)]'
+                  : 'bg-white/5 border-white/10 text-slate-300 hover:text-white'
+              }`}
+              title="Theme & Cursor Settings"
+            >
+              {themeMode === 'obsidian' ? (
+                <div className="w-4 h-4 rounded-full bg-cyan-400 ring-2 ring-cyan-500/40" />
+              ) : themeMode === 'glass' ? (
+                <Sun className="w-4 h-4 text-amber-400 animate-pulse" />
+              ) : (
+                <Moon className="w-4 h-4 text-cyan-400" />
+              )}
+            </button>
+
+            {showThemeMenu && (
+              <div className="absolute right-0 top-11 w-64 bg-[#0A1020]/95 backdrop-blur-2xl border border-white/10 rounded-2xl p-3 shadow-[0_15px_50px_rgba(0,0,0,0.7)] z-50 space-y-2 animate-scale-in">
+                <div className="px-2 pb-1 border-b border-white/10">
+                  <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block">Theme Presets</span>
+                </div>
+                
+                <div className="space-y-1">
+                  <button
+                    onClick={() => {
+                      setThemeMode('dark');
+                      setShowThemeMenu(false);
+                      toast.success('Midnight Pro Dark Theme Enabled');
+                    }}
+                    className={`w-full text-left px-2.5 py-2 rounded-xl text-xs flex items-center justify-between transition ${
+                      themeMode === 'dark' ? 'bg-cyan-500/15 border border-cyan-500/30 text-white font-semibold' : 'text-slate-300 hover:bg-white/5'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Moon className="w-3.5 h-3.5 text-cyan-400" />
+                      Midnight Pro (Dark)
+                    </span>
+                    {themeMode === 'dark' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setThemeMode('obsidian');
+                      setShowThemeMenu(false);
+                      toast.success('Obsidian OLED Pure Black Enabled');
+                    }}
+                    className={`w-full text-left px-2.5 py-2 rounded-xl text-xs flex items-center justify-between transition ${
+                      themeMode === 'obsidian' ? 'bg-cyan-500/15 border border-cyan-500/30 text-white font-semibold' : 'text-slate-300 hover:bg-white/5'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-cyan-400 ring-2 ring-cyan-500/50" />
+                      Obsidian (OLED Black)
+                    </span>
+                    {themeMode === 'obsidian' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setThemeMode('glass');
+                      setShowThemeMenu(false);
+                      toast.success('Cyber Glassmorphism Enabled');
+                    }}
+                    className={`w-full text-left px-2.5 py-2 rounded-xl text-xs flex items-center justify-between transition ${
+                      themeMode === 'glass' ? 'bg-primary-500/15 border border-primary-500/30 text-white font-semibold' : 'text-slate-300 hover:bg-white/5'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Sun className="w-3.5 h-3.5 text-amber-400" />
+                      Cyber Glassmorphic
+                    </span>
+                    {themeMode === 'glass' && <CheckCircle2 className="w-3.5 h-3.5 text-primary-400" />}
+                  </button>
+                </div>
+
+                <div className="pt-2 border-t border-white/10 px-2">
+                  <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block mb-1.5">Cursor Pointer</span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      onClick={() => {
+                        setCursorMode('website');
+                        toast.success('Website Precision Cursor Active (Windows cursor hidden)');
+                      }}
+                      className={`px-2 py-1.5 rounded-lg text-[11px] font-medium border text-center transition ${
+                        cursorMode === 'website' ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      Website Cursor
+                    </button>
+                    <button
+                      onClick={() => {
+                        setCursorMode('system');
+                        toast.success('System Default OS Cursor Active');
+                      }}
+                      className={`px-2 py-1.5 rounded-lg text-[11px] font-medium border text-center transition ${
+                        cursorMode === 'system' ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      System Cursor
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
-          </button>
+          </div>
 
           {/* Quick Actions (Zap Button) */}
           <div className="relative">

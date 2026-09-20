@@ -59,7 +59,8 @@ export const useStore = create(
       isCopying: false,
       activeTab: 'config',
       isFullscreen: false,
-      themeMode: 'dark',
+      themeMode: 'dark', // 'dark' (Midnight Pro), 'obsidian' (OLED Black), 'glass' (Cyber Glass)
+      cursorMode: 'website', // 'website' (Precision Website Cursor - Windows cursor hidden) or 'system' (OS Default)
       
       // Generator State
       generatorType: 'users',
@@ -229,7 +230,13 @@ export const useStore = create(
       setIsCopying: (copying) => set({ isCopying: copying }),
       setActiveTab: (tab) => set({ activeTab: tab }),
       setIsFullscreen: (fullscreen) => set({ isFullscreen: fullscreen }),
-      toggleThemeMode: () => set((state) => ({ themeMode: state.themeMode === 'dark' ? 'glass' : 'dark' })),
+      setThemeMode: (mode) => set({ themeMode: mode }),
+      toggleThemeMode: () => set((state) => {
+        const nextTheme = state.themeMode === 'dark' ? 'obsidian' : state.themeMode === 'obsidian' ? 'glass' : 'dark';
+        return { themeMode: nextTheme };
+      }),
+      setCursorMode: (mode) => set({ cursorMode: mode }),
+      toggleCursorMode: () => set((state) => ({ cursorMode: state.cursorMode === 'website' ? 'system' : 'website' })),
       
       setIsRecording: (recording) => set({ isRecording: recording }),
       addRecordedTraffic: (log) => set((state) => ({
@@ -260,6 +267,7 @@ export const useStore = create(
         webhookUrl: state.webhookUrl,
         isWebhookEnabled: state.isWebhookEnabled,
         themeMode: state.themeMode,
+        cursorMode: state.cursorMode,
       }),
     }
   )

@@ -299,6 +299,17 @@
   animation: flow-dash 1.2s linear infinite;
 }
 
+/* Custom Cursor Suppression: Hide Windows OS cursor when website precision cursor is active */
+.custom-cursor-active,
+.custom-cursor-active * {
+  cursor: none !important;
+}
+
+.custom-cursor-active input,
+.custom-cursor-active textarea {
+  cursor: text !important;
+}
+
 /* Glassmorphism theme overrides */
 .theme-glass .panel-3d,
 .theme-glass .glass-gradient,
@@ -337,6 +348,52 @@
 .theme-glass .border-white\/5,
 .theme-glass .border-\[\#1E293B\]\/60 {
   border-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+/* Obsidian OLED Pure Black Theme Overrides */
+.theme-obsidian {
+  background-color: #000000 !important;
+}
+
+.theme-obsidian .panel-3d,
+.theme-obsidian .glass-gradient,
+.theme-obsidian .bg-\[\#0A1020\],
+.theme-obsidian .bg-\[\#0A1020\]\/45,
+.theme-obsidian .bg-\[\#0A1020\]\/90,
+.theme-obsidian .bg-\[\#0A1020\]\/95 {
+  background: #080B11 !important;
+  border-color: #1A2234 !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7) !important;
+}
+
+.theme-obsidian .panel-3d:hover {
+  border-color: #06B6D4 !important;
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.12) !important;
+}
+
+.theme-obsidian .bg-\[\#10182D\],
+.theme-obsidian .bg-\[\#10182D\]\/85,
+.theme-obsidian .bg-\[\#10182D\]\/90 {
+  background: #0C101A !important;
+  border-color: #1E293B !important;
+}
+
+.theme-obsidian .border-white\/10,
+.theme-obsidian .border-white\/5,
+.theme-obsidian .border-\[\#1E293B\]\/60 {
+  border-color: #161F30 !important;
+}
+
+/* Midnight Pro Matte Engineering Overrides */
+.theme-midnight .panel-3d,
+.theme-midnight .glass-gradient {
+  background: rgba(13, 21, 39, 0.92) !important;
+  border-color: rgba(30, 41, 59, 0.85) !important;
+}
+
+.theme-midnight .panel-3d:hover {
+  border-color: rgba(6, 182, 212, 0.45) !important;
+  box-shadow: 0 4px 25px rgba(6, 182, 212, 0.08) !important;
 }
 
 /* FuncSpan Hero Border Animation */

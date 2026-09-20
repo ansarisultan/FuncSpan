@@ -272,8 +272,8 @@ export default function Playground() {
   return (
     <div className={`w-full flex flex-col relative overflow-hidden transition-colors duration-700 ${
       isFullscreen 
-        ? `fixed inset-0 z-50 p-4 h-screen ${themeMode === 'glass' ? 'bg-[#090e25] theme-glass' : 'bg-[#050816]'}` 
-        : themeMode === 'glass' ? 'theme-glass' : ''
+        ? `fixed inset-0 z-50 p-4 h-screen ${themeMode === 'obsidian' ? 'bg-black theme-obsidian' : themeMode === 'glass' ? 'bg-[#090e25] theme-glass' : 'bg-[#050816] theme-midnight'}` 
+        : themeMode === 'obsidian' ? 'theme-obsidian' : themeMode === 'glass' ? 'theme-glass' : 'theme-midnight'
     } ${isFullscreen ? '' : 'h-full lg:h-[calc(100vh-5.5rem)] lg:overflow-hidden'}`}>
       {/* Background Grid Pattern & Radial Glows */}
       <div className="absolute inset-0 bg-cyber-grid pointer-events-none opacity-40 z-0" />
@@ -652,6 +652,43 @@ function OverviewPage({
 
   const recentLogs = trafficLogs.slice(-5).reverse();
 
+  // 100% REAL Throughput: Calculate real rolling-window throughput buckets (last 60s, 6 buckets x 10s)
+  const now = Date.now();
+  const bucketDurationSec = 10;
+  const numBuckets = 6;
+  const throughputBuckets = [];
+
+  for (let i = numBuckets - 1; i >= 0; i--) {
+    const bucketEnd = now - (i * bucketDurationSec * 1000);
+    const bucketStart = bucketEnd - (bucketDurationSec * 1000);
+    const count = trafficLogs.filter(log => {
+      const t = log.time || (log.timestamp ? new Date(log.timestamp).getTime() : 0);
+      return t >= bucketStart && t <= bucketEnd;
+    }).length;
+    throughputBuckets.push({
+      label: i === 0 ? 'LIVE' : `${i * bucketDurationSec}s ago`,
+      rps: parseFloat((count / bucketDurationSec).toFixed(1)),
+      count,
+      index: numBuckets - 1 - i
+    });
+  }
+
+  const liveRps = throughputBuckets[throughputBuckets.length - 1]?.rps || 0;
+  const peakRps = Math.max(...throughputBuckets.map(b => b.rps), 0);
+  const maxScaleRps = Math.max(5, Math.ceil(peakRps * 1.35));
+
+  // Compute exact SVG coordinates (viewBox: 0 0 500 150)
+  const chartPoints = throughputBuckets.map((b, idx) => {
+    const x = Math.round((idx / (numBuckets - 1)) * 500);
+    const y = Math.round(135 - (b.rps / maxScaleRps) * 115);
+    return { x, y, rps: b.rps, label: b.label, count: b.count };
+  });
+
+  const pathD = chartPoints.length > 0
+    ? `M ${chartPoints[0].x},${chartPoints[0].y} ` + chartPoints.slice(1).map(p => `L ${p.x},${p.y}`).join(' ')
+    : 'M 0,135 L 500,135';
+  const fillD = `${pathD} L 500,150 L 0,150 Z`;
+
   return (
     <div className="space-y-4 overflow-y-auto h-full pr-2 pb-6">
       {/* 5 Metrics Cards Grid */}
@@ -676,17 +713,18 @@ function OverviewPage({
         {/* Card 2: Throughput / Traffic */}
         <div className="panel-3d p-3 flex flex-col justify-between h-20 bg-[#0A1020]/45 backdrop-blur-xl border-[#1E293B]/80 hover:border-[#06B6D4]/30 transition-all duration-300">
           <div className="flex justify-between items-start">
-            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider font-sans">TRAFFIC</span>
+            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider font-sans">REAL TRAFFIC</span>
             <Activity className="w-3.5 h-3.5 text-[#06B6D4]" />
           </div>
           <div className="flex items-end justify-between mt-1">
-            <div className="flex items-baseline gap-0.5">
-              <span className="text-lg font-bold font-mono text-[#06B6D4]">{totalLogs}</span>
-              <span className="text-[10px] text-slate-500 font-mono">reqs</span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-lg font-bold font-mono text-[#06B6D4]">{liveRps > 0 ? liveRps : totalLogs}</span>
+              <span className="text-[10px] text-slate-500 font-mono">{liveRps > 0 ? 'req/s' : 'reqs'}</span>
             </div>
-            <svg className="w-14 h-5 text-[#06B6D4]/50" viewBox="0 0 100 30" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M0,28 Q15,5 30,25 T60,10 T90,20 L100,5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <div className="text-[9px] text-right font-mono text-slate-400">
+              <div className="text-[#06B6D4]">Peak: {peakRps} rps</div>
+              <div className="text-slate-500">{totalLogs} total</div>
+            </div>
           </div>
         </div>
 
@@ -748,65 +786,86 @@ function OverviewPage({
               <div className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-[#06B6D4]" />
                 <h3 className="text-sm font-semibold text-white">Real-Time Traffic Throughput</h3>
+                <span className="text-[11px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
+                  {liveRps} req/s
+                </span>
               </div>
-              <span className="text-[10px] text-slate-400 font-semibold font-mono bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">
-                LIVE METRICS
-              </span>
+              <div className="flex items-center gap-3 text-[10px] font-mono text-slate-400">
+                <span className="hidden sm:inline text-slate-500">Peak: <strong className="text-cyan-400">{peakRps} rps</strong></span>
+                <span className="text-slate-400 font-semibold bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">
+                  REAL 60S WINDOW
+                </span>
+              </div>
             </div>
             
-            {/* Custom Interactive SVG Throughput Chart */}
+            {/* Custom Interactive SVG Throughput Chart Driven by Real HTTP Data */}
             <div className="h-64 flex flex-col justify-between relative overflow-hidden group">
               {/* Grid lines */}
               <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20 z-0">
-                <div className="border-b border-[#1E293B] w-full h-0" />
-                <div className="border-b border-[#1E293B] w-full h-0" />
-                <div className="border-b border-[#1E293B] w-full h-0" />
-                <div className="border-b border-[#1E293B] w-full h-0" />
+                <div className="border-b border-[#1E293B] w-full h-0 flex justify-end pr-2 text-[9px] font-mono text-slate-500">{maxScaleRps} rps</div>
+                <div className="border-b border-[#1E293B] w-full h-0 flex justify-end pr-2 text-[9px] font-mono text-slate-500">{Math.round(maxScaleRps * 0.66)} rps</div>
+                <div className="border-b border-[#1E293B] w-full h-0 flex justify-end pr-2 text-[9px] font-mono text-slate-500">{Math.round(maxScaleRps * 0.33)} rps</div>
+                <div className="border-b border-[#1E293B] w-full h-0 flex justify-end pr-2 text-[9px] font-mono text-slate-500">0 rps</div>
               </div>
               
-              {/* Dynamic Wave SVG */}
+              {/* Dynamic Real HTTP Wave SVG */}
               <div className="flex-1 w-full relative z-10">
                 <svg className="w-full h-full text-[#06B6D4]" viewBox="0 0 500 150" preserveAspectRatio="none">
                   <defs>
                     <linearGradient id="chart-glow" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.25" />
+                      <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.3" />
                       <stop offset="100%" stopColor="#06B6D4" stopOpacity="0.0" />
                     </linearGradient>
                   </defs>
                   
-                  {/* Fill area */}
+                  {/* Real Fill Area */}
                   <path 
-                    d={`M0,150 L0,120 Q50,70 100,110 T200,60 T300,90 T400,45 T500,15 L500,150 Z`} 
+                    d={fillD} 
                     fill="url(#chart-glow)" 
                   />
-                  {/* Stroke path */}
+                  {/* Real Stroke Path */}
                   <path 
-                    d={`M0,120 Q50,70 100,110 T200,60 T300,90 T400,45 T500,15`} 
+                    d={pathD} 
                     fill="none" 
                     stroke="currentColor" 
                     strokeWidth="2.5" 
                     strokeLinecap="round"
+                    strokeLinejoin="round"
                     className="stroke-cyan-glow"
                   />
                   
-                  {/* Glowing data points */}
-                  <circle cx="100" cy="110" r="3" fill="#06B6D4" className="animate-pulse" />
-                  <circle cx="200" cy="60" r="3" fill="#06B6D4" className="animate-pulse" />
-                  <circle cx="300" cy="90" r="3" fill="#06B6D4" className="animate-pulse" />
-                  <circle cx="400" cy="45" r="3" fill="#06B6D4" className="animate-pulse" />
-                  <circle cx="500" cy="15" r="4" fill="#22C55E" />
+                  {/* Dynamic Real Data Points */}
+                  {chartPoints.map((pt, pIdx) => (
+                    <g key={pIdx} className="transition-all duration-300">
+                      <circle 
+                        cx={pt.x} 
+                        cy={pt.y} 
+                        r={pIdx === chartPoints.length - 1 && pt.rps > 0 ? 5 : 3.5} 
+                        fill={pIdx === chartPoints.length - 1 && pt.rps > 0 ? '#22C55E' : '#06B6D4'} 
+                        className={pIdx === chartPoints.length - 1 && pt.rps > 0 ? 'animate-pulse' : ''}
+                      />
+                    </g>
+                  ))}
                 </svg>
+
+                {/* Standby Indicator when 0 requests */}
+                {peakRps === 0 && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none bg-black/10 backdrop-blur-[1px]">
+                    <p className="text-xs font-mono text-slate-400">0.0 req/s • Real-time traffic standby</p>
+                    <p className="text-[10px] text-slate-600 mt-0.5">Send proxy requests or start a load test to observe live throughput curves.</p>
+                  </div>
+                )}
               </div>
               
               <div className="flex justify-between items-center text-[10px] text-slate-500 font-mono mt-2 pt-2 border-t border-[#1E293B]/40 relative z-10">
-                <span>60s ago</span>
-                <span>45s ago</span>
-                <span>30s ago</span>
-                <span>15s ago</span>
-                <span className="text-[#22C55E] flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-ping" />
-                  LIVE
-                </span>
+                {throughputBuckets.map((b, idx) => (
+                  <span key={idx} className={idx === throughputBuckets.length - 1 ? "text-[#22C55E] flex items-center gap-1 font-bold" : ""}>
+                    {idx === throughputBuckets.length - 1 && (
+                      <span className={`w-1.5 h-1.5 rounded-full ${liveRps > 0 ? 'bg-[#22C55E] animate-ping' : 'bg-slate-600'}`} />
+                    )}
+                    {b.label}
+                  </span>
+                ))}
               </div>
             </div>
           </div>

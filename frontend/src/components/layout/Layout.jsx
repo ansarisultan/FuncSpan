@@ -136,7 +136,11 @@ export default function Layout({ children }) {
     <div 
       ref={containerRef}
       className={`flex h-screen overflow-hidden relative select-none transition-colors duration-700 ${
-        themeMode === 'glass' ? 'bg-[#090e25] theme-glass' : 'bg-[#050816]'
+        themeMode === 'obsidian' 
+          ? 'bg-[#000000] theme-obsidian' 
+          : themeMode === 'glass' 
+          ? 'bg-[#090e25] theme-glass' 
+          : 'bg-[#050816] theme-midnight'
       }`}
       style={{ '--mouse-x': `${mousePosition.x}%`, '--mouse-y': `${mousePosition.y}%` }}
     >

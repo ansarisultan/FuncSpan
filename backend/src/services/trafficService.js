@@ -111,12 +111,15 @@ class TrafficService {
 
     stats.avgResponseTime = Math.round(totalResponseTime / logs.length);
     
-    // Calculate RPS (last minute)
-    const oneMinuteAgo = Date.now() - 60000;
+    // Calculate active real RPS over a responsive 15-second rolling window
+    const recentWindowMs = 15000;
+    const windowStart = Date.now() - recentWindowMs;
     const recentLogs = logs.filter(log => 
-      new Date(log.timestamp).getTime() > oneMinuteAgo
+      new Date(log.timestamp).getTime() >= windowStart
     );
-    stats.requestsPerSecond = Math.round(recentLogs.length / 60);
+    stats.requestsPerSecond = recentLogs.length > 0 
+      ? parseFloat((recentLogs.length / (recentWindowMs / 1000)).toFixed(1))
+      : 0;
 
     return stats;
   }
