@@ -7,9 +7,10 @@ import {
   ChevronDown, ChevronUp, Copy, Check
 } from 'lucide-react';
 import { useAI } from '../../context/AIContext';
+import FormattedReport from '../ui/FormattedReport';
 
 export default function AIAssistant({ isOpen, onClose }) {
-  const { messages, isProcessing, sendMessage, clearHistory, quickActions } = useAI();
+  const { messages, isProcessing, sendMessage, clearHistory, quickActions, activeModel } = useAI();
   const [input, setInput] = useState('');
   const [copied, setCopied] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(true);
@@ -63,16 +64,6 @@ export default function AIAssistant({ isOpen, onClose }) {
     });
   };
 
-  const formatMessage = (content) => {
-    let formatted = content
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/```([\s\S]*?)```/g, '<pre class="bg-black/50 p-2 rounded-lg text-xs font-mono text-green-300 overflow-x-auto">$1</pre>')
-      .replace(/`([^`]+)`/g, '<code class="bg-black/30 px-1.5 py-0.5 rounded text-xs font-mono text-green-300">$1</code>')
-      .replace(/\n/g, '<br />')
-      .replace(/• /g, '• ');
-    return formatted;
-  };
 
   if (!isOpen) return null;
 
@@ -86,14 +77,16 @@ export default function AIAssistant({ isOpen, onClose }) {
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gradient-cyber">LexaChat AI</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-gradient-cyber">LexaChat AI</h2>
+              </div>
               <div className="flex items-center gap-2 text-[10px] text-slate-400">
                 <div className={`w-1.5 h-1.5 rounded-full ${isProcessing ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'}`} />
-                {isProcessing ? 'Thinking...' : 'Ready to help'}
+                {isProcessing ? 'Analyzing report...' : 'Performance Analyst Ready'}
                 <span className="text-slate-500">•</span>
                 <span className="flex items-center gap-1">
                   <Globe className="w-3 h-3" />
-                  LexaChat AI
+                  LexaChat Online
                 </span>
               </div>
             </div>
@@ -175,16 +168,17 @@ export default function AIAssistant({ isOpen, onClose }) {
                   }`}
                 >
                   <div
-                    className={`inline-block p-3 rounded-xl ${
+                    className={`inline-block p-3.5 rounded-xl ${
                       msg.role === 'user'
                         ? 'bg-gradient-to-br from-primary-500/20 to-secondary-500/20 text-white'
-                        : 'bg-white/5 text-slate-300'
-                    } max-w-[90%]`}
+                        : 'bg-slate-900/90 text-slate-200 border border-white/10 w-full'
+                    } max-w-[95%]`}
                   >
-                    <div 
-                      className="text-sm leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: formatMessage(msg.content) }}
-                    />
+                    {msg.role === 'user' ? (
+                      <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
+                    ) : (
+                      <FormattedReport content={msg.content} />
+                    )}
                   </div>
                   {msg.role === 'assistant' && (
                     <button
@@ -200,13 +194,13 @@ export default function AIAssistant({ isOpen, onClose }) {
             ))
           )}
           {isProcessing && (
-            <div className="flex items-center gap-3 text-slate-400">
+            <div className="flex items-center gap-3 text-slate-400 p-2 rounded-xl bg-slate-900/50 border border-white/5">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-warm-500/20 to-accent-500/20 flex items-center justify-center">
                 <Sparkles className="w-4 h-4 text-warm-400" />
               </div>
               <div className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Thinking...</span>
+                <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
+                <span className="text-xs">Generating human-readable report...</span>
               </div>
             </div>
           )}
@@ -227,7 +221,7 @@ export default function AIAssistant({ isOpen, onClose }) {
                   handleSend();
                 }
               }}
-              placeholder="Ask me anything..."
+              placeholder="Ask about load testing, URL concurrency, bottlenecks..."
               disabled={isProcessing}
               className="flex-1 bg-[#0F172A]/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all duration-300"
             />
@@ -246,7 +240,7 @@ export default function AIAssistant({ isOpen, onClose }) {
           <div className="flex items-center justify-between mt-2 text-[10px] text-slate-500">
             <span className="flex items-center gap-2">
               <span>Powered by</span>
-              <span className="text-primary-400 font-semibold">FuncLexa Core</span>
+              <span className="text-cyan-400 font-semibold font-mono">LexaChat AI</span>
               <span>• FuncLexa</span>
             </span>
             <span className="flex items-center gap-2">

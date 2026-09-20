@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore';
 import { useProxy } from '../hooks/useProxy';
 import { useTraffic } from '../hooks/useTraffic';
 import { useAI } from '../context/AIContext';
+import FormattedReport from '../components/ui/FormattedReport';
 import ProxyConfig from '../components/panels/ProxyConfig';
 import NetworkControls from '../components/panels/NetworkControls';
 import TrafficInspector from '../components/panels/TrafficInspector';
@@ -51,7 +52,7 @@ export default function Playground() {
   const [isFloatingChatOpen, setIsFloatingChatOpen] = useState(false);
   const [floatingChatInput, setFloatingChatInput] = useState('');
   const floatingChatEndRef = useRef(null);
-  const { messages, isProcessing, sendMessage } = useAI();
+  const { messages, isProcessing, sendMessage, activeModel } = useAI();
 
   useEffect(() => {
     if (isFloatingChatOpen && floatingChatEndRef.current) {
@@ -466,19 +467,19 @@ export default function Playground() {
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
           {/* Chat Window Panel */}
           {isFloatingChatOpen && (
-            <div className="w-[360px] max-w-[90vw] h-[450px] bg-[#0A1020]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_15px_50px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden mb-4 animate-scale-in">
+            <div className="w-[420px] md:w-[480px] max-w-[94vw] h-[520px] bg-[#0A1020]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_15px_50px_rgba(0,0,0,0.85)] flex flex-col overflow-hidden mb-4 animate-scale-in">
               {/* Header */}
               <div className="p-3 bg-gradient-to-r from-primary-500/10 to-secondary-500/10 border-b border-white/10 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-xl bg-gradient-main flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.2)]">
-                    <Sparkles className="w-3.5 h-3.5 text-white" />
+                  <div className="w-8 h-8 rounded-xl bg-gradient-main flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+                    <Sparkles className="w-4 h-4 text-white" />
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                      Network Assistant
+                      LexaChat AI
                       <span className="w-1.5 h-1.5 rounded-full bg-success-500 animate-pulse" />
                     </h4>
-                    <span className="text-[8px] text-slate-400 font-semibold uppercase tracking-wider block">Context-Aware Report Analyst</span>
+                    <span className="text-[8px] text-slate-400 font-semibold uppercase tracking-wider block">Executive Performance Report Analyst</span>
                   </div>
                 </div>
                 <button 
@@ -492,29 +493,37 @@ export default function Playground() {
               {/* Chat Message History */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
                 {messages.length === 0 ? (
-                  <div className="h-full flex flex-col justify-center items-center text-center p-4 space-y-4">
+                  <div className="h-full flex flex-col justify-center items-center text-center p-3 space-y-3">
                     <div className="w-12 h-12 rounded-full bg-[#10182D] border border-white/5 flex items-center justify-center text-primary-400">
                       <Activity className="w-6 h-6 animate-pulse" />
                     </div>
                     <div>
-                      <h5 className="text-xs font-bold text-white mb-1">Network Report Ready</h5>
-                      <p className="text-[10px] text-slate-400 max-w-[200px]">
-                        I have detected network analysis traffic. What specific insights or report breakdowns can I help you with?
+                      <h5 className="text-xs font-bold text-white mb-1">Human-Readable Report Ready</h5>
+                      <p className="text-[10px] text-slate-400 max-w-[280px]">
+                        LexaChat is ready to analyze your URL concurrent capacity, load testing metrics, and latency bottlenecks.
                       </p>
                     </div>
                     {/* Quick options */}
-                    <div className="w-full space-y-1.5 pt-2">
+                    <div className="w-full space-y-1.5 pt-1">
                       <button 
-                        onClick={() => sendMessage('Explain the current network status and any latency or error anomalies')}
-                        className="w-full p-2 text-left text-[10px] text-slate-300 hover:text-white bg-white/5 hover:bg-primary-500/10 border border-white/5 hover:border-primary-500/20 rounded-xl transition duration-200"
+                        onClick={() => sendMessage('How many people can access this URL at a time? Provide a full capacity analysis report.')}
+                        className="w-full p-2 text-left text-[11px] text-cyan-300 hover:text-white bg-cyan-950/20 hover:bg-cyan-900/30 border border-cyan-800/30 hover:border-cyan-500/50 rounded-xl transition duration-200 flex items-center gap-2"
                       >
-                        Explain network status report
+                        <span>👥</span>
+                        <span>How many people can access this URL at a time?</span>
                       </button>
                       <button 
-                        onClick={() => sendMessage('Why is there high latency or errors in the proxy?')}
-                        className="w-full p-2 text-left text-[10px] text-slate-300 hover:text-white bg-white/5 hover:bg-primary-500/10 border border-white/5 hover:border-primary-500/20 rounded-xl transition duration-200"
+                        onClick={() => sendMessage('Analyze my latest load testing results and explain any latency or error bottlenecks.')}
+                        className="w-full p-2 text-left text-[11px] text-slate-300 hover:text-white bg-white/5 hover:bg-primary-500/10 border border-white/5 hover:border-primary-500/20 rounded-xl transition duration-200 flex items-center gap-2"
                       >
-                        Analyze latency or error causes
+                        <span>📊</span>
+                        <span>Generate Full Load Testing Audit Report</span>
+                      </button>
+                      <button 
+                        onClick={() => sendMessage('Explain the current network status and any latency or error anomalies')}
+                        className="w-full p-2 text-left text-[10px] text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl transition duration-200"
+                      >
+                        Explain current proxy status
                       </button>
                     </div>
                   </div>
@@ -522,27 +531,31 @@ export default function Playground() {
                   messages.map((msg, index) => (
                     <div 
                       key={index}
-                      className={`flex gap-2.5 max-w-[85%] ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
+                      className={`flex gap-2.5 ${msg.role === 'user' ? 'ml-auto flex-row-reverse max-w-[85%]' : 'w-full'}`}
                     >
                       {msg.role !== 'user' && (
-                        <div className="w-6 h-6 rounded-lg bg-gradient-main flex-shrink-0 flex items-center justify-center">
+                        <div className="w-6 h-6 rounded-lg bg-gradient-main flex-shrink-0 flex items-center justify-center mt-1">
                           <Sparkles className="w-3.5 h-3.5 text-white" />
                         </div>
                       )}
-                      <div className={`p-3 rounded-2xl text-xs ${
+                      <div className={`p-3 rounded-2xl text-xs overflow-hidden ${
                         msg.role === 'user'
                           ? 'bg-[#10182D] text-white border border-white/10 rounded-tr-none'
-                          : 'bg-white/5 text-slate-200 border border-white/5 rounded-tl-none'
+                          : 'bg-slate-900/90 text-slate-200 border border-white/10 rounded-tl-none w-full shadow-md'
                       }`}>
-                        {msg.content}
+                        {msg.role === 'user' ? (
+                          <div className="whitespace-pre-wrap">{msg.content}</div>
+                        ) : (
+                          <FormattedReport content={msg.content} />
+                        )}
                       </div>
                     </div>
                   ))
                 )}
                 {isProcessing && (
-                  <div className="flex gap-2.5 items-center text-xs text-slate-400 p-2">
+                  <div className="flex gap-2.5 items-center text-xs text-slate-400 p-2 bg-slate-900/50 rounded-xl border border-white/5">
                     <Loader2 className="w-3.5 h-3.5 animate-spin text-[#06B6D4]" />
-                    <span>Analyzing report data...</span>
+                    <span>Analyzing performance report...</span>
                   </div>
                 )}
                 <div ref={floatingChatEndRef} />
@@ -560,7 +573,7 @@ export default function Playground() {
               >
                 <input
                   type="text"
-                  placeholder="Ask a question about the report..."
+                  placeholder="Ask about URL capacity, latency, load test..."
                   value={floatingChatInput}
                   onChange={(e) => setFloatingChatInput(e.target.value)}
                   disabled={isProcessing}

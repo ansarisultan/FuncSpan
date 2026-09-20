@@ -3,46 +3,98 @@ import { useStore } from '../store/useStore';
 
 const AIContext = createContext(null);
 
-const SYSTEM_PROMPT = `You are FuncSpan AI Assistant, an intelligent helper for the Network Environment Playground.
-You help developers test their applications against controlled backend conditions.
+const SYSTEM_PROMPT = `You are LexaChat AI, an intelligent performance engineering and load testing analyst for the FuncSpan Network Testing Platform.
 
-You have access to:
-- The user's current proxy configuration
-- Network conditions (latency, errors, failure rates)
-- Traffic logs and statistics
-- Saved scenarios
+Your mission is to provide clear, human-readable, executive performance reports, diagnose backend bottlenecks, and advise developers on scaling.
 
-Your capabilities:
-1. Help configure proxy URLs and backend connections
-2. Guide users on network condition simulation
-3. Explain error injection and failure rates
-4. Assist with stress testing and load simulation
-5. Help create and manage scenarios
-6. Troubleshoot connection issues
-7. Explain schema mutation and payload expansion
+REPORT FORMATTING RULES:
+Whenever the user asks to explain, analyze, or generate a report on network traffic, latency, errors, or load testing:
+You MUST format your analysis strictly as a clean, human-readable report in GitHub Flavored Markdown using these exact sections:
 
-Always be helpful, professional, and concise. Provide actionable advice.`;
+## 🎯 Executive Verdict
+A 2-3 sentence executive assessment. State whether the URL passed, experienced mild degradation, or failed the test under current load conditions.
+
+## 👥 URL Concurrent User Capacity
+Directly answer: **How many people can access this URL at a time?**
+- **Recommended Safe Concurrency**: e.g., ~X simultaneous active users (based on ~2.5s-3.5s typical user browsing intervals).
+- **Peak Simultaneous Connections**: e.g., ~Y concurrent in-flight requests.
+- **Performance Tier**: e.g., High Stability / Approaching Bottleneck / Critical Degradation.
+- **SLA Boundary**: Estimated latency threshold before response exceeds 500ms or fails.
+
+## 📊 Load & Performance Metrics
+Provide a clean Markdown table summarizing the execution:
+| Metric | Tested Value | Status / SLA Verdict |
+| :--- | :--- | :--- |
+| Target URL | \`{url}\` | Tested Endpoint |
+| Concurrency | ... | Target Concurrency |
+| Total Requests | ... | Completed |
+| Throughput | ... req/s | Sustained |
+| Avg Latency | ... ms | Normal / Elevated |
+| P95 Latency | ... ms | SLA Boundary |
+| Success Rate | ... % | Error-free |
+
+## ⚠️ Bottlenecks & Anomaly Analysis
+Identify any latency spikes, error codes (e.g. 500, 502, 503, 429), or payload issues observed during the run.
+
+## 🚀 Actionable Optimization Recommendations
+Numbered list of 3-4 concrete technical steps to increase concurrent user capacity (e.g., Redis caching, database indexing, horizontal scaling, rate limiting, connection pooling).
+
+Always maintain an authoritative, developer-friendly, human-readable tone with bold highlights, tables, and bullet points.`;
 
 export function AIProvider({ children }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [messages, setMessages] = useState([]);
   const [error, setError] = useState(null);
+  const [activeModel, setActiveModel] = useState('LexaChat AI');
   const abortControllerRef = useRef(null);
 
-  const { backendUrl, proxyUrl, isProxyActive, latency, errorCode, failureRate, trafficLogs } = useStore();
+  const {
+    backendUrl,
+    proxyUrl,
+    isProxyActive,
+    latency,
+    errorCode,
+    failureRate,
+    trafficLogs,
+    stressTestConfig,
+    stressTestResults
+  } = useStore();
 
   const buildContext = useCallback(() => {
-    return `
-Current Configuration:
-- Backend URL: ${backendUrl || 'Not set'}
-- Proxy URL: ${proxyUrl || 'Not generated'}
-- Proxy Status: ${isProxyActive ? 'Active' : 'Inactive'}
-- Latency: ${latency}ms
-- Error Code: ${errorCode === 'none' ? 'None' : errorCode}
-- Failure Rate: ${failureRate}%
-- Total Traffic Logs: ${trafficLogs.length}
+    let capacityInsight = '';
+    if (stressTestResults) {
+      const duration = stressTestConfig?.duration || 30;
+      const rps = Math.round(((stressTestResults.totalSent || 100) * ((stressTestResults.successRate || 100) / 100)) / duration);
+      const safeUsers = Math.max(1, Math.round(
+        rps * 3.0 * ((stressTestResults.successRate || 100) / 100) * Math.min(1.0, 350 / Math.max(stressTestResults.avgLatency || 150, 50))
+      ));
+      capacityInsight = `
+Load Test Execution Results:
+- Target Tested URL: ${proxyUrl || backendUrl || 'Default Proxy URL'}
+- Test Concurrency: ${stressTestConfig?.concurrentRequests || 10} concurrent threads
+- Total Requests Sent: ${stressTestResults.totalSent}
+- Test Duration: ${stressTestConfig?.duration || 30} seconds
+- Sustained Throughput: ${rps} req/s
+- Average Latency: ${stressTestResults.avgLatency}ms
+- P95 Latency: ${stressTestResults.p95Latency}ms
+- Success Rate: ${stressTestResults.successRate}%
+- Error Count: ${stressTestResults.errors}
+- Calculated Safe Concurrent User Capacity: ~${safeUsers} active users simultaneously
 `;
-  }, [backendUrl, proxyUrl, isProxyActive, latency, errorCode, failureRate, trafficLogs]);
+    }
+
+    return `
+Current Network Configuration:
+- Backend Target URL: ${backendUrl || 'Not set'}
+- Active Proxy URL: ${proxyUrl || 'Not generated'}
+- Proxy Status: ${isProxyActive ? 'Active' : 'Inactive'}
+- Injected Latency: ${latency}ms
+- Simulated Error Code: ${errorCode === 'none' ? 'None' : errorCode}
+- Injected Failure Rate: ${failureRate}%
+- Total Captured Traffic Logs: ${trafficLogs.length}
+${capacityInsight}
+`;
+  }, [backendUrl, proxyUrl, isProxyActive, latency, errorCode, failureRate, trafficLogs, stressTestConfig, stressTestResults]);
 
   const sendMessage = useCallback(async (userMessage) => {
     if (!userMessage.trim()) return;
@@ -71,45 +123,75 @@ Current Configuration:
     const context = buildContext();
     const systemPrompt = SYSTEM_PROMPT + context;
 
-    try {
-      const apiMessages = [
-        { role: 'system', content: systemPrompt },
-        ...messages.slice(-10),
-        userMsg,
-      ];
+    // Primary requested model is gpt-20b ('openai/gpt-oss-20b') with fallback cascade
+    const modelCandidates = [
+      'openai/gpt-oss-20b',
+      'gpt-oss-20b',
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant'
+    ];
 
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
-          messages: apiMessages,
-          temperature: 0.7,
-          max_tokens: 1024,
-          stream: false,
-        }),
-        signal: controller.signal,
-      });
+    const apiMessages = [
+      { role: 'system', content: systemPrompt },
+      ...messages.slice(-10),
+      userMsg,
+    ];
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || `API error: ${response.status}`);
-      }
+    let lastError = null;
+    let assistantMessage = null;
 
-      const data = await response.json();
-      const assistantMessage = data.choices[0]?.message?.content || 'I apologize, but I could not process your request.';
-
-      setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
-
+    for (const candidateModel of modelCandidates) {
       try {
-        localStorage.setItem('funcspan_chat_history', JSON.stringify(
-          [...messages, userMsg, { role: 'assistant', content: assistantMessage }].slice(-50)
-        ));
-      } catch (e) {}
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: candidateModel,
+            messages: apiMessages,
+            temperature: 0.6,
+            max_tokens: 1500,
+            stream: false,
+          }),
+          signal: controller.signal,
+        });
 
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          const errMsg = errorData.error?.message || `API error: ${response.status}`;
+          // If model is not found, try next candidate
+          if (response.status === 400 || response.status === 404 || errMsg.toLowerCase().includes('model')) {
+            console.warn(`Model ${candidateModel} unavailable, trying fallback...`, errMsg);
+            lastError = new Error(errMsg);
+            continue;
+          }
+          throw new Error(errMsg);
+        }
+
+        const data = await response.json();
+        assistantMessage = data.choices[0]?.message?.content || 'Report generation completed.';
+        setActiveModel('LexaChat AI');
+        break; // Success
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        lastError = err;
+      }
+    }
+
+    try {
+      if (assistantMessage) {
+        setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
+
+        try {
+          localStorage.setItem('funcspan_chat_history', JSON.stringify(
+            [...messages, userMsg, { role: 'assistant', content: assistantMessage }].slice(-50)
+          ));
+        } catch (e) {}
+      } else {
+        throw lastError || new Error('Could not process request across available models.');
+      }
     } catch (error) {
       if (error.name === 'AbortError') return;
       setError(error.message);
@@ -140,12 +222,12 @@ Current Configuration:
   }, []);
 
   const quickActions = {
+    'audit capacity': 'Analyze how many people can access this URL at a time and generate a full performance report.',
+    'stress test analysis': 'Review my latest load testing results and explain any latency or error bottlenecks.',
     'generate proxy': 'Enter your backend URL in the Configuration panel and click "Generate Proxy" to create your mock URL.',
     'simulate latency': 'Use the Network Controls panel to add latency. Choose from presets or set custom values.',
     'inject errors': 'Select an error code from the Error Injection section to simulate backend failures.',
-    'stress test': 'Enable stress testing in the Advanced section to simulate high load conditions.',
-    'create scenario': 'Configure your network conditions and click "Save Current" to create a reusable scenario.',
-    'help': 'I can help with:\n• Proxy configuration\n• Network condition simulation\n• Error injection\n• Stress testing\n• Scenario management\n• Traffic inspection\n\nWhat would you like to know?',
+    'help': 'I can help with:\n• URL concurrent user capacity analysis\n• Load testing & stress test reports\n• Latency and bottleneck diagnosis\n• Proxy routing and configuration\n\nWhat would you like me to analyze?',
   };
 
   return (
@@ -153,6 +235,7 @@ Current Configuration:
       messages,
       isProcessing,
       error,
+      activeModel,
       sendMessage,
       clearHistory,
       loadHistory,
