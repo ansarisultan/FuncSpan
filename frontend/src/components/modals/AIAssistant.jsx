@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { 
-  X, Send, Sparkles, Zap, Loader2, 
+import {
+  X, Send, Sparkles, Zap, Loader2,
   MessageCircle, Clock, Star, HardDrive,
   Layers, Palette, Wand2, Download,
   Settings, User, Shield, Globe,
@@ -118,7 +118,7 @@ export default function AIAssistant({ isOpen, onClose }) {
                 I'm your AI assistant for FuncSpan. Ask me about proxy configuration,
                 network simulation, stress testing, or any feature.
               </p>
-              
+
               {showQuickActions && (
                 <div className="mt-6 w-full max-w-md">
                   <button
@@ -145,16 +145,14 @@ export default function AIAssistant({ isOpen, onClose }) {
             messages.map((msg, idx) => (
               <div
                 key={idx}
-                className={`flex items-start gap-3 ${
-                  msg.role === 'user' ? 'flex-row-reverse' : ''
-                }`}
+                className={`flex items-start gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''
+                  }`}
               >
                 <div
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    msg.role === 'user'
-                      ? 'bg-gradient-to-br from-primary-500 to-secondary-500'
-                      : 'bg-gradient-to-br from-warm-500/20 to-accent-500/20'
-                  }`}
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${msg.role === 'user'
+                    ? 'bg-gradient-to-br from-primary-500 to-secondary-500'
+                    : 'bg-gradient-to-br from-warm-500/20 to-accent-500/20'
+                    }`}
                 >
                   {msg.role === 'user' ? (
                     <User className="w-4 h-4 text-white" />
@@ -163,16 +161,14 @@ export default function AIAssistant({ isOpen, onClose }) {
                   )}
                 </div>
                 <div
-                  className={`flex-1 min-w-0 ${
-                    msg.role === 'user' ? 'text-right' : ''
-                  }`}
+                  className={`flex-1 min-w-0 ${msg.role === 'user' ? 'text-right' : ''
+                    }`}
                 >
                   <div
-                    className={`inline-block p-3.5 rounded-xl ${
-                      msg.role === 'user'
-                        ? 'bg-gradient-to-br from-primary-500/20 to-secondary-500/20 text-white'
-                        : 'bg-slate-900/90 text-slate-200 border border-white/10 w-full'
-                    } max-w-[95%]`}
+                    className={`inline-block p-3.5 rounded-xl ${msg.role === 'user'
+                      ? 'bg-gradient-to-br from-primary-500/20 to-secondary-500/20 text-white'
+                      : 'bg-slate-900/90 text-slate-200 border border-white/10 w-full'
+                      } max-w-[95%]`}
                   >
                     {msg.role === 'user' ? (
                       <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
