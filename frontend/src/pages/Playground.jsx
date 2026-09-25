@@ -10,6 +10,7 @@ import NetworkControls from '../components/panels/NetworkControls';
 import TrafficInspector from '../components/panels/TrafficInspector';
 import ScenarioManager from '../components/panels/ScenarioManager';
 import StressTest from '../components/panels/StressTest';
+import ProxyInterface from './ProxyInterface';
 import { DummyDataGeneratorConfig, DummyDataGeneratorPreview } from '../components/panels/DummyDataGenerator';
 import { 
   SplitSquareHorizontal, Maximize2, Minimize2,
@@ -61,7 +62,7 @@ export default function Playground() {
   }, [messages, isFloatingChatOpen]);
 
   const getLeftColSpanClass = () => {
-    if (activeTab === 'traffic') return 'hidden';
+    if (activeTab === 'traffic' || activeTab === 'proxy') return 'hidden';
     if (!isLeftPanelOpen) return 'hidden';
     if (isPlaceholderCollapsed && !isProxyActive && activeTab !== 'traffic' && activeTab !== 'generator') {
       const showRightPanel = isRightPanelOpen && activeTab !== 'traffic' && activeTab !== 'generator';
@@ -71,7 +72,7 @@ export default function Playground() {
   };
 
   const getCenterColSpanClass = () => {
-    if (activeTab === 'traffic') return 'lg:col-span-12';
+    if (activeTab === 'traffic' || activeTab === 'proxy') return 'lg:col-span-12';
     const showPlaceholder = !isProxyActive && activeTab !== 'traffic' && activeTab !== 'generator';
     if (showPlaceholder && isPlaceholderCollapsed) return 'hidden';
     
@@ -193,6 +194,7 @@ export default function Playground() {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3, to: '/app' },
     { id: 'config', label: 'Configuration', icon: Settings, to: '/app/config' },
+    { id: 'proxy', label: 'Proxy Gateway', icon: Shield, to: '/app/proxy' },
     { id: 'traffic', label: 'Traffic Inspector', icon: Activity, to: '/app/logs' },
     { id: 'stress', label: 'Stress Test', icon: Loader2, to: '/app/stress' },
     { id: 'scenarios', label: 'Scenarios', icon: FileText, to: '/app/scenarios' },
@@ -210,6 +212,8 @@ export default function Playground() {
       setActiveTab('generator');
     } else if (location.pathname === '/app/config') {
       setActiveTab('config');
+    } else if (location.pathname === '/app/proxy') {
+      setActiveTab('proxy');
     } else if (location.pathname === '/app') {
       setActiveTab('overview');
     }
@@ -243,6 +247,7 @@ export default function Playground() {
       case 'scenarios': return <ScenarioManager />;
       case 'traffic': return <TrafficInspector />;
       case 'stress': return <StressTest />;
+      case 'proxy': return <ProxyInterface />;
       case 'generator': 
         return (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full">

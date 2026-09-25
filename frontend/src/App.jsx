@@ -14,7 +14,8 @@ export default function App() {
           {/* Landing Page - FuncSpan */}
           <Route path="/" element={<Landing />} />
           
-          {/* Proxy Interface Page */}
+          {/* Proxy Interface Pages */}
+          <Route path="/proxy-interface" element={<ProxyInterface />} />
           <Route path="/proxy-interface/:proxyId" element={<ProxyInterface />} />
           
           {/* App Routes - FuncLexa Assets */}
@@ -23,6 +24,7 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<Playground />} />
                 <Route path="/config" element={<Playground />} />
+                <Route path="/proxy" element={<Playground />} />
                 <Route path="/logs" element={<Playground />} />
                 <Route path="/stress" element={<Playground />} />
                 <Route path="/scenarios" element={<Playground />} />

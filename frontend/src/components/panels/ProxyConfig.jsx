@@ -31,15 +31,28 @@ export default function ProxyConfig() {
   const [connectionMessage, setConnectionMessage] = useState('');
   const [responseTime, setResponseTime] = useState('');
 
+  const normalizeUrlInput = (input) => {
+    if (!input) return '';
+    let trimmed = input.trim();
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+      trimmed = `https://${trimmed}`;
+    }
+    return trimmed;
+  };
+
   const handleTestConnection = async () => {
     if (!backendUrl) {
       setUrlError('Please enter a backend URL');
       return;
     }
 
+    const normalized = normalizeUrlInput(backendUrl);
     try {
-      new URL(backendUrl);
+      new URL(normalized);
       setUrlError('');
+      if (normalized !== backendUrl) {
+        setBackendUrl(normalized);
+      }
     } catch {
       setUrlError('Please enter a valid URL (e.g., https://api.example.com)');
       return;
@@ -50,7 +63,7 @@ export default function ProxyConfig() {
     
     try {
       const response = await axios.post(`${API_BASE_URL}/api/proxy/check-network`, {
-        backendUrl
+        backendUrl: normalized
       });
       if (response.data && response.data.online) {
         setConnectionStatus('online');
@@ -76,9 +89,13 @@ export default function ProxyConfig() {
       return;
     }
 
+    const normalized = normalizeUrlInput(backendUrl);
     try {
-      new URL(backendUrl);
+      new URL(normalized);
       setUrlError('');
+      if (normalized !== backendUrl) {
+        setBackendUrl(normalized);
+      }
     } catch {
       setUrlError('Please enter a valid URL (e.g., https://api.example.com)');
       return;

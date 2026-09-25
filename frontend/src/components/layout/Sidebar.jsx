@@ -16,6 +16,7 @@ import { API_BASE_URL } from '../../config';
 const navItems = [
   { to: '/app', label: 'Overview', icon: BarChart3 },
   { to: '/app/config', label: 'Configuration', icon: Settings },
+  { to: '/app/proxy', label: 'Proxy Gateway', icon: Shield },
   { to: '/app/logs', label: 'Traffic Logs', icon: Activity },
   { to: '/app/stress', label: 'Stress Test', icon: Loader2 },
   { to: '/app/scenarios', label: 'Scenarios', icon: FolderOpen },

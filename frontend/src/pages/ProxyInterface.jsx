@@ -1,18 +1,26 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
+import { useStore } from '../store/useStore';
 import { 
-  Shield, Globe, Loader2, AlertCircle, 
+  Shield, Globe, Loader2, AlertCircle, AlertTriangle,
   Terminal, RefreshCw, Send, ArrowLeft, Activity, 
   Clock, Database, Lock, Copy, Check, Code, 
-  Layers, Zap, ExternalLink, SlidersHorizontal, Trash2
+  Layers, Zap, ExternalLink, SlidersHorizontal, Trash2, Plus
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function ProxyInterface() {
-  const { proxyId } = useParams();
+  const { proxyId: paramProxyId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { proxyId: storeProxyId, backendUrl, setProxyId, setProxyUrl, setIsProxyActive } = useStore();
+  
+  // Detect if embedded inside Layout (at /app/proxy) vs standalone (/proxy-interface/:proxyId)
+  const isEmbedded = location.pathname.startsWith('/app/');
+  
+  const [effectiveProxyId, setEffectiveProxyId] = useState(paramProxyId || storeProxyId || null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [proxyConfig, setProxyConfig] = useState(null);
@@ -34,15 +42,50 @@ export default function ProxyInterface() {
   const [copiedCurl, setCopiedCurl] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
 
-  const fetchProxyData = async (isBackground = false) => {
+  const initializeDefaultProxy = async () => {
+    try {
+      setLoading(true);
+      const fallbackUrl = 'https:' + '//jsonplaceholder.typicode.com';
+      const targetBackend = backendUrl || fallbackUrl;
+      const response = await axios.post(`${API_BASE_URL}/api/proxy/create`, {
+        backendUrl: targetBackend,
+        networkConfig: {
+          latency: 0,
+          errorCode: 'none',
+          failureRate: 0,
+          rateLimit: 'none'
+        }
+      });
+      if (response.data && response.data.success) {
+        const newId = response.data.proxy.id;
+        setEffectiveProxyId(newId);
+        setProxyId(newId);
+        setProxyUrl(response.data.proxy.proxyUrl);
+        setIsProxyActive(true);
+        setProxyConfig(response.data.proxy);
+        toast.success(`Active Gateway initialized (#${newId})`);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to initialize proxy gateway.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchProxyData = async (isBackground = false, targetId = effectiveProxyId) => {
+    if (!targetId) {
+      // Try to initialize or check backend health
+      await initializeDefaultProxy();
+      return;
+    }
     if (!isBackground) setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/proxy/${proxyId}`);
+      const response = await axios.get(`${API_BASE_URL}/api/proxy/${targetId}`);
       if (response.data && response.data.success) {
         setProxyConfig(response.data.proxy);
         
-        const trafficResponse = await axios.get(`${API_BASE_URL}/api/proxy/${proxyId}/traffic?limit=20`);
+        const trafficResponse = await axios.get(`${API_BASE_URL}/api/proxy/${targetId}/traffic?limit=20`);
         if (trafficResponse.data && trafficResponse.data.success) {
           setTrafficLogs(trafficResponse.data.traffic || []);
         }
@@ -51,6 +94,11 @@ export default function ProxyInterface() {
       }
     } catch (err) {
       if (!isBackground) {
+        // If 404 on current ID, try auto-initializing
+        if (err.response?.status === 404) {
+          await initializeDefaultProxy();
+          return;
+        }
         setError(
           err.response?.data?.message || 
           err.message || 
@@ -63,25 +111,29 @@ export default function ProxyInterface() {
   };
 
   useEffect(() => {
-    if (proxyId) {
-      fetchProxyData();
+    const idToUse = paramProxyId || storeProxyId;
+    if (idToUse) {
+      setEffectiveProxyId(idToUse);
+      fetchProxyData(false, idToUse);
+    } else {
+      initializeDefaultProxy();
     }
-  }, [proxyId]);
+  }, [paramProxyId, storeProxyId]);
 
   // Auto-refresh interval
   useEffect(() => {
     let timer;
-    if (autoRefresh && proxyId) {
+    if (autoRefresh && effectiveProxyId) {
       timer = setInterval(() => {
-        fetchProxyData(true);
+        fetchProxyData(true, effectiveProxyId);
       }, 3000);
     }
     return () => clearInterval(timer);
-  }, [autoRefresh, proxyId]);
+  }, [autoRefresh, effectiveProxyId]);
 
   const constructFullUrl = () => {
     const formattedPath = testPath.startsWith('/') ? testPath : `/${testPath}`;
-    return `${API_BASE_URL}/p/${proxyId}${formattedPath}`;
+    return `${API_BASE_URL}/p/${effectiveProxyId || 'active'}${formattedPath}`;
   };
 
   const generateCurlCommand = () => {
@@ -165,7 +217,7 @@ export default function ProxyInterface() {
       }
 
       // Refresh traffic logs in background
-      const trafficResponse = await axios.get(`${API_BASE_URL}/api/proxy/${proxyId}/traffic?limit=20`);
+      const trafficResponse = await axios.get(`${API_BASE_URL}/api/proxy/${effectiveProxyId}/traffic?limit=20`);
       if (trafficResponse.data && trafficResponse.data.success) {
         setTrafficLogs(trafficResponse.data.traffic || []);
       }
@@ -199,16 +251,16 @@ export default function ProxyInterface() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050816] text-white flex flex-col items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-cyber-grid pointer-events-none opacity-40 z-0" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-[#06B6D4]/10 rounded-full blur-[100px] pointer-events-none z-0" />
+      <div className={`${isEmbedded ? 'h-full' : 'min-h-screen bg-[#050816]'} text-white flex flex-col items-center justify-center relative overflow-hidden`}>
+        {!isEmbedded && <div className="absolute inset-0 bg-cyber-grid pointer-events-none opacity-40 z-0" />}
+        {!isEmbedded && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-[#06B6D4]/10 rounded-full blur-[100px] pointer-events-none z-0" />}
         
         <div className="z-10 text-center space-y-6 animate-pulse">
           <Loader2 className="w-12 h-12 text-[#06B6D4] animate-spin mx-auto" />
           <div className="space-y-2">
             <h2 className="text-lg font-bold text-gradient-animated-funclexa font-sans">Connecting to Proxy Gateway...</h2>
             <p className="text-xs text-slate-400 max-w-xs mx-auto">
-              Synchronizing routing state and validating proxy session #{proxyId}.
+              Synchronizing routing state and validating proxy session #{effectiveProxyId || 'active'}.
             </p>
           </div>
         </div>
@@ -218,9 +270,9 @@ export default function ProxyInterface() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#050816] text-white flex flex-col items-center justify-center p-4 relative overflow-hidden">
-        <div className="absolute inset-0 bg-cyber-grid pointer-events-none opacity-40 z-0" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-red-500/10 rounded-full blur-[100px] pointer-events-none z-0" />
+      <div className={`${isEmbedded ? 'h-full' : 'min-h-screen bg-[#050816]'} text-white flex flex-col items-center justify-center p-4 relative overflow-hidden`}>
+        {!isEmbedded && <div className="absolute inset-0 bg-cyber-grid pointer-events-none opacity-40 z-0" />}
+        {!isEmbedded && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-red-500/10 rounded-full blur-[100px] pointer-events-none z-0" />}
         
         <div className="z-10 max-w-md w-full panel-3d p-6 bg-[#0A1020]/90 backdrop-blur-2xl border-red-500/30 text-center space-y-6 shadow-2xl">
           <div className="w-16 h-16 rounded-full bg-red-500/15 border border-red-500/30 flex items-center justify-center mx-auto text-red-500 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
@@ -241,7 +293,7 @@ export default function ProxyInterface() {
             </p>
             <ul className="list-disc pl-4 space-y-1">
               <li>Confirm the backend API server is running on port 5000.</li>
-              <li>Verify the proxy session ID (<span className="text-primary-400 font-mono">{proxyId}</span>) is registered.</li>
+              <li>Verify the proxy session ID (<span className="text-primary-400 font-mono">{effectiveProxyId || 'active'}</span>) is registered.</li>
               <li>Verify that the destination URL accepts inbound HTTP requests.</li>
             </ul>
           </div>
@@ -267,13 +319,13 @@ export default function ProxyInterface() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050816] text-white p-4 sm:p-6 lg:p-8 relative overflow-hidden font-sans">
+    <div className={`${isEmbedded ? 'h-full overflow-y-auto' : 'min-h-screen bg-[#050816]'} text-white p-4 sm:p-6 lg:p-8 relative overflow-x-hidden font-sans`}>
       <Toaster position="top-right" />
-      <div className="absolute inset-0 bg-cyber-grid pointer-events-none opacity-40 z-0" />
-      <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-[#06B6D4]/5 rounded-full blur-[120px] pointer-events-none z-0" />
-      <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-indigo-500/5 rounded-full blur-[100px] pointer-events-none z-0" />
+      {!isEmbedded && <div className="absolute inset-0 bg-cyber-grid pointer-events-none opacity-40 z-0" />}
+      {!isEmbedded && <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-[#06B6D4]/5 rounded-full blur-[120px] pointer-events-none z-0" />}
+      {!isEmbedded && <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-indigo-500/5 rounded-full blur-[100px] pointer-events-none z-0" />}
       
-      <div className="max-w-6xl mx-auto space-y-6 z-10 relative">
+      <div className={`${isEmbedded ? '' : 'max-w-6xl'} mx-auto space-y-6 z-10 relative`}>
         {/* Top Navigation Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-[#0A1020]/90 backdrop-blur-2xl border border-white/10 shadow-lg">
           <div className="flex items-center gap-3">
@@ -288,7 +340,7 @@ export default function ProxyInterface() {
                   ONLINE
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-mono mt-0.5">Session: {proxyId}</p>
+              <p className="text-xs text-slate-400 font-mono mt-0.5">Session: {effectiveProxyId || 'active'}</p>
             </div>
           </div>
 
@@ -332,7 +384,7 @@ export default function ProxyInterface() {
                   Proxy Gateway Routing
                 </h2>
                 <button
-                  onClick={() => copyProxyUrl(proxyConfig?.proxyUrl || `${API_BASE_URL}/p/${proxyId}`)}
+                  onClick={() => copyProxyUrl(proxyConfig?.proxyUrl || `${API_BASE_URL}/p/${effectiveProxyId}`)}
                   className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 px-2 py-0.5 rounded bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 transition font-mono"
                 >
                   {copiedUrl ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
@@ -344,7 +396,7 @@ export default function ProxyInterface() {
                 <div className="space-y-1">
                   <span className="text-slate-400 block text-[10px]">PUBLIC PROXY GATEWAY</span>
                   <div className="p-2.5 bg-white/5 rounded-xl border border-white/5 text-cyan-300 select-all truncate font-semibold">
-                    {proxyConfig?.proxyUrl || `${API_BASE_URL}/p/${proxyId}`}
+                    {proxyConfig?.proxyUrl || `${API_BASE_URL}/p/${effectiveProxyId}`}
                   </div>
                 </div>
                 <div className="space-y-1">
@@ -412,7 +464,7 @@ export default function ProxyInterface() {
                   </select>
                   
                   <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">/p/{proxyId}</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">/p/{effectiveProxyId || 'active'}</span>
                     <input
                       type="text"
                       placeholder="/users or /api/data"

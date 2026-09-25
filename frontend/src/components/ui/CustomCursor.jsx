@@ -3,12 +3,10 @@ import { useStore } from '../../store/useStore';
 
 export default function CustomCursor() {
   const cursorMode = useStore(state => state.cursorMode || 'website');
-  const [position, setPosition] = useState({ x: -100, y: -100 });
+  const cursorRef = useRef(null);
   const [isHovering, setIsHovering] = useState(false);
   const [isClicking, setIsClicking] = useState(false);
-  const [hasMoved, setHasMoved] = useState(false);
-  const posRef = useRef({ x: -100, y: -100 });
-  const rafRef = useRef(null);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     // If system cursor is selected, remove custom-cursor-active and exit
@@ -17,22 +15,34 @@ export default function CustomCursor() {
       return;
     }
 
-    // Suppress the default Windows OS cursor across the website
+    // Suppress the default OS cursor across the website
     document.documentElement.classList.add('custom-cursor-active');
 
-    const updatePosition = (e) => {
-      posRef.current = { x: e.clientX, y: e.clientY };
-      if (!hasMoved) setHasMoved(true);
+    const handlePointerMove = (e) => {
+      // Ignore touch gestures
+      if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+        if (cursorRef.current) cursorRef.current.style.opacity = '0';
+        return;
+      }
 
-      if (!rafRef.current) {
-        rafRef.current = requestAnimationFrame(() => {
-          setPosition(posRef.current);
-          rafRef.current = null;
-        });
+      if (cursorRef.current) {
+        // Direct GPU-accelerated transform with 0ms lag
+        cursorRef.current.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
+        if (!isVisible) setIsVisible(true);
       }
     };
 
-    const updateHover = (e) => {
+    const handlePointerLeave = () => {
+      if (cursorRef.current) cursorRef.current.style.opacity = '0';
+      setIsVisible(false);
+    };
+
+    const handlePointerEnter = () => {
+      if (cursorRef.current) cursorRef.current.style.opacity = '1';
+      setIsVisible(true);
+    };
+
+    const handleMouseOver = (e) => {
       const target = e.target;
       if (!target) return;
       const isInteractive = 
@@ -40,6 +50,7 @@ export default function CustomCursor() {
         target.tagName === 'A' ||
         target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
         target.closest('button') ||
         target.closest('a') ||
         target.closest('.cursor-pointer') ||
@@ -51,50 +62,54 @@ export default function CustomCursor() {
     const handleMouseDown = () => setIsClicking(true);
     const handleMouseUp = () => setIsClicking(false);
 
-    window.addEventListener('mousemove', updatePosition, { passive: true });
-    window.addEventListener('mouseover', updateHover, { passive: true });
+    window.addEventListener('pointermove', handlePointerMove, { passive: true });
+    window.addEventListener('pointerleave', handlePointerLeave);
+    window.addEventListener('pointerenter', handlePointerEnter);
+    window.addEventListener('mouseover', handleMouseOver, { passive: true });
     window.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
 
     return () => {
       document.documentElement.classList.remove('custom-cursor-active');
-      window.removeEventListener('mousemove', updatePosition);
-      window.removeEventListener('mouseover', updateHover);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerleave', handlePointerLeave);
+      window.removeEventListener('pointerenter', handlePointerEnter);
+      window.removeEventListener('mouseover', handleMouseOver);
       window.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mouseup', handleMouseUp);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [cursorMode, hasMoved]);
+  }, [cursorMode, isVisible]);
 
   // If system cursor mode, don't render custom cursor
   if (cursorMode === 'system') {
     return null;
   }
 
-  // If touch device, don't show
-  if (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) {
+  // If device is strictly touch-only (coarse pointer)
+  if (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches && !window.matchMedia('(pointer: fine)').matches) {
     return null;
   }
 
   return (
     <div
+      ref={cursorRef}
       className="fixed pointer-events-none z-[999999] will-change-transform"
       style={{
         left: 0,
         top: 0,
-        transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
-        opacity: hasMoved ? 1 : 0,
+        transform: 'translate3d(-100px, -100px, 0)',
+        opacity: isVisible ? 1 : 0,
         transition: 'opacity 0.15s ease',
       }}
     >
       {/* Dynamic Aura Ring on Interactive Hover */}
       <div 
-        className={`absolute -left-3 -top-3 w-8 h-8 rounded-full border border-cyan-400/80 bg-cyan-400/10 transition-all duration-200 pointer-events-none ${
+        className={`absolute -left-3.5 -top-3.5 w-8 h-8 rounded-full border border-cyan-400/80 bg-cyan-400/15 transition-all duration-200 pointer-events-none ${
           isHovering ? 'scale-125 opacity-100 shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'scale-50 opacity-0'
-        } ${isClicking ? 'scale-90 bg-cyan-400/25' : ''}`}
+        } ${isClicking ? 'scale-90 bg-cyan-400/30' : ''}`}
       />
 
-      {/* Prominent, Highly Visible Cyber Precision Arrow */}
+      {/* Zero-Offset Pixel-Perfect Precision Cyber Pointer (Tip at 0,0) */}
       <div 
         className="relative transition-transform duration-75 origin-top-left"
         style={{
@@ -102,28 +117,29 @@ export default function CustomCursor() {
         }}
       >
         <svg 
-          width="26" 
-          height="26" 
+          width="24" 
+          height="24" 
           viewBox="0 0 24 24" 
           fill="none" 
           xmlns="http://www.w3.org/2000/svg"
           className="drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)] filter"
         >
+          {/* Main Pointer Arrow with tip exactly at (0,0) */}
           <path
-            d="M3 2L9.5 21.5L13 13L21.5 9.5L3 2Z"
+            d="M0 0L7.5 21L11.5 12L20.5 8L0 0Z"
             fill="url(#cyberCursorGrad)"
             stroke="#FFFFFF"
-            strokeWidth="1.6"
+            strokeWidth="1.5"
             strokeLinejoin="round"
           />
-          {/* Inner Accent Core */}
+          {/* Inner Glowing Accent Core */}
           <path
-            d="M5.5 5.5L9.8 17.5L12 12L17.5 9.8L5.5 5.5Z"
+            d="M3 3.5L7.8 17L10.5 11L16.5 8.2L3 3.5Z"
             fill="#FFFFFF"
-            fillOpacity="0.4"
+            fillOpacity="0.35"
           />
           <defs>
-            <linearGradient id="cyberCursorGrad" x1="3" y1="2" x2="21.5" y2="21.5" gradientUnits="userSpaceOnUse">
+            <linearGradient id="cyberCursorGrad" x1="0" y1="0" x2="21" y2="21" gradientUnits="userSpaceOnUse">
               <stop offset="0%" stopColor="#06B6D4" />
               <stop offset="50%" stopColor="#3B82F6" />
               <stop offset="100%" stopColor="#6366F1" />
@@ -131,9 +147,9 @@ export default function CustomCursor() {
           </defs>
         </svg>
 
-        {/* Mini Status Dot when Hovering */}
+        {/* Mini Status Dot on Hover */}
         {isHovering && (
-          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-cyan-300 animate-ping" />
+          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-cyan-300 animate-ping" />
         )}
       </div>
     </div>
